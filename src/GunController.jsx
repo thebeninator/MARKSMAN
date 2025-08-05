@@ -5,13 +5,15 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Bullet from "./Bullet";
 import MartiniHenry from "./MartiniHenry";
 import * as easing from "maath/easing";
+import useReloadController from "./gunHooks/useReloadController";
+import useAdsController from "./gunHooks/useAdsController";
 
 export default function GunController(props) {
   const {camera} = useThree();
   const [bullets, setBullets] = useState([]);
-  const [isAiming, setIsAiming] = useState(false);
-  const [isReloading, setReloading] = useState(false);
   const pointerLocked = useRef(false);
+  const {isReloading}  = useReloadController();
+  const {isAiming} = useAdsController(pointerLocked, isReloading);
 
   const getPointerSpeed = () => {
     if (isReloading) {
@@ -38,18 +40,15 @@ export default function GunController(props) {
   }
   
   useFrame((state, delta, frame) => {
-    const zoom = state.camera.zoom;
     const targetZoom = isAiming ? props.aimZoom : props.defaultZoom;
 
-    if (zoom != targetZoom) {
-      easing.damp(state.camera, "zoom", targetZoom, 0.25, delta);
-      state.camera.updateProjectionMatrix();
-    }
+    easing.damp(state.camera, "zoom", targetZoom, 0.25, delta);
+    state.camera.updateProjectionMatrix();
   });
 
   useEffect(() => {
     const shoot = (e) => {
-      if (e.button === 0 && pointerLocked.current && !isReloading) {
+      if (!isReloading && e.button === 0 && pointerLocked.current) {
         const newBullet = {
           id: crypto.randomUUID(), 
           rotation: euler().copy(camera.rotation),
@@ -63,51 +62,6 @@ export default function GunController(props) {
     window.addEventListener("mousedown", shoot);
     return () => window.removeEventListener("mousedown", shoot);
   }, [bullets, isReloading]);
-
-  useEffect(() => {
-    const ads = (e) => {
-      if (e.button === 2 && pointerLocked.current && !isReloading) {
-        setIsAiming(!isAiming);
-      }
-    }
-
-    window.addEventListener("mousedown", ads);
-    return () => window.removeEventListener("mousedown", ads);
-  }, [isAiming, isReloading]);
-
-  useEffect(() => {
-    const keydown = (e) => {
-      if (e.code === "KeyR") {
-        setReloading(true);
-        setIsAiming(false);
-      }
-    }
-
-    const keyup = (e) => {
-      if (e.code === "KeyR") {
-        setReloading(false);
-      }
-    }
-
-    window.addEventListener("keydown", keydown);
-    window.addEventListener("keyup", keyup);
-
-    return () => {
-      window.removeEventListener("keydown", keydown)
-      window.removeEventListener("keyup", keyup)
-    };  
-  }, [isReloading]); 
-
-  useEffect(() => {
-    const mouseMove = (e) => {
-      if (!isReloading) return;
-      console.log(e.movementY);
-    }
-
-    window.addEventListener("mousemove", mouseMove); 
-
-    return () => window.removeEventListener("mousemove", mouseMove);
-  }, [isReloading]);
 
   return (
     <Fragment>

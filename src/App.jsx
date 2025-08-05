@@ -20,12 +20,12 @@ export default function App() {
       gl={ {antialias: false} } 
     >
       <ambientLight intensity={0.5} />
-      <directionalLight lookAt={[0, -1.7 / 2, -500]} position={[0, 1.7, -500]} intensity={2} decay={0.7} castShadow />
+      <directionalLight lookAt={[0, -1.7 / 2, -200]} position={[0, 1, -200]} intensity={2} decay={0.7} castShadow />
       <pointLight position={[0, 50, 50]} intensity={2} decay={0.1} castShadow />
       <Suspense>
         <Physics colliders={false} timeStep="vary">
           <Floor />
-          <TargetSimple position={[0, -1.7 / 2, -500]} />
+          <TargetSimple position={[0, -1.7 / 2, -200]} />
           <GunController 
             defaultZoom={1} 
             aimZoom={6} 
