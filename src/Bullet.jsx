@@ -9,6 +9,8 @@ export default function Bullet(props) {
   const timeout = useRef(0); 
 
   useFrame((state, delta, frame) => {
+    if (ref.current === null) { return } 
+
     timeout.current += delta; 
 
     if (timeout.current >= 15) {

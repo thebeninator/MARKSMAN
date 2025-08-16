@@ -3,27 +3,26 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { euler, vec3 } from "@react-three/rapier";
 import { Fragment, useEffect, useRef, useState } from "react";
 import Bullet from "./Bullet";
-import MartiniHenry from "./MartiniHenry";
+import MartiniHenryModel from "./MartiniHenry";
 import * as easing from "maath/easing";
-import useReloadController from "./gunHooks/useReloadController";
 import useAdsController from "./gunHooks/useAdsController";
+import ReloadController from "./ReloadController";
 
 export default function GunController(props) {
-  const {camera} = useThree();
   const [bullets, setBullets] = useState([]);
+  const [isReloading, setReloading] = useState(false);
   const pointerLocked = useRef(false);
-  const {isReloading}  = useReloadController();
-  const {isAiming} = useAdsController(pointerLocked, isReloading);
+  const magazineCount = useRef(1);  
+  const { camera } = useThree();
+  const { isAiming } = useAdsController(pointerLocked, isReloading);
+
+  const setReloadingHandler = (isReloading) => {
+    setReloading(isReloading);
+  }
 
   const getPointerSpeed = () => {
-    if (isReloading) {
-      return 0;
-    }
-
-    if (isAiming) {
-      return (props.aimZoom * 2) / camera.fov;
-    }    
-
+    if (isReloading) return 0;
+    if (isAiming) return (props.aimZoom * 2) / camera.fov;  
     return 1;
   }
 
@@ -33,31 +32,34 @@ export default function GunController(props) {
   }
 
   const onBulletHit = (manifold, id) => {
-    if (manifold !== null) {
-    }
-
     destroyBullet(id);
   }
   
   useFrame((state, delta, frame) => {
     const targetZoom = isAiming ? props.aimZoom : props.defaultZoom;
 
-    easing.damp(state.camera, "zoom", targetZoom, 0.25, delta);
-    state.camera.updateProjectionMatrix();
+    if (state.camera.zoom !== targetZoom) {
+      easing.damp(state.camera, "zoom", targetZoom, 0.25, delta);
+      state.camera.updateProjectionMatrix();
+    }
   });
 
   useEffect(() => {
     const shoot = (e) => {
-      if (!isReloading && e.button === 0 && pointerLocked.current) {
-        const newBullet = {
-          id: crypto.randomUUID(), 
-          rotation: euler().copy(camera.rotation),
-          position: vec3().copy(camera.position).add(camera.getWorldDirection(vec3()).multiplyScalar(5)),
-          muzzleVelocityVector: vec3({x: 0, y: 0, z: 1}).unproject(camera).normalize().multiplyScalar(411)
-        };
-        setBullets(prev => ([...prev, newBullet]));
-      }
-    }
+      if (e.button !== 0) return;
+      if (!pointerLocked.current) return;
+      if (isReloading) return;
+      if (magazineCount.current <= 0) return;
+
+      const newBullet = {
+        id: crypto.randomUUID(), 
+        rotation: euler().copy(camera.rotation),
+        position: vec3().copy(camera.position).add(camera.getWorldDirection(vec3()).multiplyScalar(5)),
+        muzzleVelocityVector: vec3({x: 0, y: 0, z: 1}).unproject(camera).normalize().multiplyScalar(411)
+      };
+      magazineCount.current -= 1;
+      setBullets(prev => ([...prev, newBullet]));
+    };
 
     window.addEventListener("mousedown", shoot);
     return () => window.removeEventListener("mousedown", shoot);
@@ -65,7 +67,14 @@ export default function GunController(props) {
 
   return (
     <Fragment>
-      <MartiniHenry isAiming={isAiming} />
+      <ReloadController 
+        magazineCount={magazineCount} 
+        isReloading={isReloading} 
+        setReloading={setReloadingHandler} 
+        ui={props.ui}
+      />
+
+      <MartiniHenryModel isAiming={isAiming} />
 
       {bullets.map(bullet => 
         <Bullet

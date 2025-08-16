@@ -1,0 +1,210 @@
+import { Fragment, useEffect, useRef, useState } from "react";
+import { useThree } from "@react-three/fiber";
+import { Vector2 } from "three";
+import useMouseButtonHeldHandler from "./gunHooks/useMouseButtonHeldHandler";
+import ReloadCursor from "./ReloadCursor";
+import ReloadObject from "./ReloadObject";
+
+const ReloadMethodTypes = Object.freeze({
+  MOUSE_MOTION: 0,
+  GRABBER: 1,
+});
+
+const Directions = Object.freeze({
+  UP: 0,
+  DOWN: 1,
+  LEFT: 2,
+  RIGHT: 3,
+});
+
+const MARTINI_HENRY_RELOAD = [
+  {
+    type: ReloadMethodTypes.MOUSE_MOTION,
+    sensitivity: 1,
+    length: 3,
+    refreshMagazine: false,
+    direction: Directions.UP,
+    ejectCartridge: true,
+  },
+  {
+    type: ReloadMethodTypes.GRABBER,
+    sensitivity: 1,
+    length: 3,
+    refreshMagazine: true,
+    direction: Directions.UP,
+  },
+  {
+    type: ReloadMethodTypes.MOUSE_MOTION,
+    sensitivity: 1,
+    length: 3,
+    refreshMagazine: false,
+    direction: Directions.DOWN
+  },
+];
+
+const grabRayOrigin = new Vector2();
+
+export default function ReloadController(props) {
+  const reloadSchema = useRef(MARTINI_HENRY_RELOAD);
+  const [reloadStage, setReloadStage] = useState(0);
+  const reloadProgress = useRef(0);
+  const reloadComplete = useRef(false);
+  const [cursorX, setX] = useState(window.innerWidth / 2);
+  const [cursorY, setY] = useState(window.innerHeight / 2);
+  const { raycaster, camera, scene } = useThree();
+  const { holdingLeftClick, holdingRightClick } = useMouseButtonHeldHandler();
+  const [reloadObjectGrabbed, setReloadObjectGrabbed] = useState(false);
+  
+  const [intersecting, yes] = useState(false);
+  
+  const canReload = () => {
+    return (props.isReloading && !reloadComplete.current);
+  }
+
+  const getReloadSchema = () => {
+    const totalStages = reloadSchema.current.length;
+    const currStage = reloadSchema.current[reloadStage];
+    const currStageIdx = reloadStage;
+    return { totalStages, currStage, currStageIdx };
+  }
+
+  const currStageTypeOf = (type) => {
+    return reloadSchema.current[reloadStage].type === type;
+  }
+
+  const tryFinishReload = () => {
+    if (reloadProgress.current < 1) return;
+
+    const { totalStages, currStage, currStageIdx } = getReloadSchema();
+    const nextStageIdx = currStageIdx + 1;
+
+    reloadProgress.current = 0;
+    setReloadStage(nextStageIdx);
+    if (currStage.refreshMagazine) props.magazineCount.current = 1;
+    if (currStage.ejectCartridge) props.magazineCount.current = 0;
+
+    if (currStageIdx + 1 === totalStages) {
+      reloadComplete.current = true;
+      setReloadStage(0);
+      return;
+    }
+  }
+
+  useEffect(() => {
+    if (!holdingLeftClick) {
+      setReloadObjectGrabbed(false);
+    }
+  }, [holdingLeftClick]);
+
+  useEffect(() => {
+    const grabberReloadGrab = (e) => {
+      if (e.button !== 0) return;
+      // convert 2D space to NDC space
+      // x / w => 0..1
+      // then multiply by 2 => 0..2
+      // then sub 1 => -1..1
+      const x = (cursorX / window.innerWidth) * 2 - 1;
+      const y = ((cursorY / window.innerHeight) * 2 - 1) * -1; // up is positive y in NDC space
+      grabRayOrigin.x = x;
+      grabRayOrigin.y = y;
+      raycaster.setFromCamera(grabRayOrigin, camera);
+      raycaster.layers.set(1);
+      const intersections = raycaster.intersectObjects(scene.children);
+
+      setReloadObjectGrabbed(intersections.length > 0);
+      yes(intersections.length > 0);
+    }
+
+    window.addEventListener("mousedown", grabberReloadGrab); 
+    return () => window.removeEventListener("mousedown", grabberReloadGrab); 
+  }, [cursorX, cursorY, intersecting]);
+
+  useEffect(() => {
+    const grabberReloadMotion = (e) => {
+      if (!canReload()) return; 
+      if (!currStageTypeOf(ReloadMethodTypes.GRABBER)) return;
+      if (!holdingRightClick) return;
+      
+      const dx = e.movementX;
+      const dy = e.movementY;
+      const innerWidth = window.innerWidth;
+      const innerHeight = window.innerHeight;
+
+      setX(prevX => (prevX + dx));
+      setY(prevY => (prevY + dy));
+
+      if (cursorX + dx < 0.001) setX(0);
+      if (cursorY + dy < 0.001) setY(0);
+      if (cursorX + dx > innerWidth) setX(innerWidth);
+      if (cursorY + dy > innerHeight) setY(innerHeight);
+    };
+    window.addEventListener("mousemove", grabberReloadMotion); 
+
+    return () => window.removeEventListener("mousemove", grabberReloadMotion); 
+  }, [reloadStage, props.isReloading, holdingRightClick, cursorX, cursorY]);
+
+  useEffect(() => {
+    const motionReload = (e) => {
+      if (!canReload()) return; 
+      if (!currStageTypeOf(ReloadMethodTypes.MOUSE_MOTION)) return;
+
+      const { totalStages, currStage } = getReloadSchema();
+      const mouseMovedDown = e.movementY > 0 && currStage.direction === Directions.DOWN;
+      const mouseMovedUp = e.movementY < 0 && currStage.direction === Directions.UP;
+
+      if (mouseMovedDown || mouseMovedUp) {
+        reloadProgress.current += Math.abs(e.movementY) / totalStages / 100.0;
+        tryFinishReload();
+      }
+    };
+
+    window.addEventListener("mousemove", motionReload); 
+    return () => window.removeEventListener("mousemove", motionReload);
+  }, [reloadStage, props.isReloading]);
+
+  useEffect(() => {
+    const keydown = (e) => {
+      if (e.code === "KeyR") props.setReloading(true);
+    };
+    window.addEventListener("keydown", keydown);
+
+    const keyup = (e) => {
+      if (e.code === "KeyR") { 
+        props.setReloading(false);
+        reloadProgress.current = 0;
+        reloadComplete.current = false;
+        setReloadObjectGrabbed(false);
+      }
+    };
+    window.addEventListener("keyup", keyup);
+
+    return () => {
+      window.removeEventListener("keydown", keydown)
+      window.removeEventListener("keyup", keyup)
+    }
+  }, [props.isReloading]);
+
+  return (
+    <Fragment>
+      <ReloadObject 
+        x={cursorX} y={cursorY} 
+        grabbed={reloadObjectGrabbed} 
+        visible={currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading}
+      />
+
+      <props.ui.In>
+        {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading && <ReloadCursor x={cursorX} y={cursorY} />}
+
+        {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading &&
+          <div key="r" style={{
+            position: "absolute",
+            left: `${cursorX}px`,
+            top: `${cursorY}px`,
+          }}>     
+            <p>{reloadObjectGrabbed ? "cartridge grabbed" : ""}</p>
+          </div>
+        } 
+      </props.ui.In>  
+    </Fragment>
+  ); 
+}

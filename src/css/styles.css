@@ -15,8 +15,8 @@ html, body, #root {
 
 .dot {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 0%;
+  left: 0%;
   width: 10px;
   height: 10px;
   border-radius: 50%;

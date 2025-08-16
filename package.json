@@ -16,7 +16,8 @@
     "maath": "^0.10.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "three": "^0.178.0"
+    "three": "^0.178.0",
+    "tunnel-rat": "^0.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

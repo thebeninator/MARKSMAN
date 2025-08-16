@@ -9,7 +9,7 @@ import martiniHenryUrl from "./assets/martini_henry.glb";
 const adsPos = vec3({x: 0, y: -0.71, z: -6.0});
 const defaultPos = vec3({x: 1.2, y: -1.0, z: -6.0});
 
-export default function MartiniHenry(props) {
+export default function MartiniHenryModel(props) {
   const model = useRef();
   const modelLocalGroup = useRef();
   const { nodes } = useGLTF(martiniHenryUrl);
