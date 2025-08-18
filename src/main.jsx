@@ -14,6 +14,7 @@ createRoot(document.getElementById('root')).render(
       <h1>Martini–Henry | .577/450</h1>
       <p>British breech-loading rifle with lever-actuated falling block action</p>
       <p>Model by TastyTony @ Sketchfab</p>
+      <p>Powered by React + R3F / three.js</p>
     </div>
   </Fragment>
 )

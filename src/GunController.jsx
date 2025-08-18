@@ -15,6 +15,7 @@ export default function GunController(props) {
   const magazineCount = useRef(1);  
   const { camera } = useThree();
   const { isAiming } = useAdsController(pointerLocked, isReloading);
+  const modelNodesRef = useRef();
 
   const setReloadingHandler = (isReloading) => {
     setReloading(isReloading);
@@ -35,7 +36,7 @@ export default function GunController(props) {
     destroyBullet(id);
   }
   
-  useFrame((state, delta, frame) => {
+  useFrame((state, delta) => {
     const targetZoom = isAiming ? props.aimZoom : props.defaultZoom;
 
     if (state.camera.zoom !== targetZoom) {
@@ -72,9 +73,13 @@ export default function GunController(props) {
         isReloading={isReloading} 
         setReloading={setReloadingHandler} 
         ui={props.ui}
+        modelNodesRef={modelNodesRef}
       />
 
-      <MartiniHenryModel isAiming={isAiming} />
+      <MartiniHenryModel 
+        isAiming={isAiming} 
+        modelNodesRef={modelNodesRef}
+      />
 
       {bullets.map(bullet => 
         <Bullet

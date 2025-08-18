@@ -24,7 +24,7 @@ export default function useAdsController(pointerLocked, isReloading) {
 
     window.addEventListener("mousedown", ads);
     return () => window.removeEventListener("mousedown", ads);
-  }, [isAiming, wasAiming, isReloading]);
+  }, [pointerLocked, isAiming, wasAiming, isReloading]);
   
   return { isAiming, setIsAiming };
 }

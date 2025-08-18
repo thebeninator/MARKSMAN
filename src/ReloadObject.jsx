@@ -1,24 +1,28 @@
-import { useFrame } from "@react-three/fiber";
-import { vec3 } from "@react-three/rapier";
-import { useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Fragment, useEffect, useRef, useState } from "react";
 import martiniHenryCartUrl from "./assets/martini_henry_cart.glb";
-import { Edges, Outlines, useGLTF } from "@react-three/drei";
-import { radToDeg } from "three/src/math/MathUtils.js";
+import { Edges, Outlines, Sphere, useGLTF } from "@react-three/drei";
+import { degToRad, radToDeg } from "three/src/math/MathUtils.js";
 import * as easing from "maath/easing";
-import { Vector3 } from "three";
+import { Euler, Plane, PlaneHelper, Quaternion, Vector3 } from "three";
 
-const loweredPos = vec3({x: -1.2, y: -2, z: -1.5});
-const defaultPos = vec3({x: -1.2, y: -0.7, z: -1.5});
-const cursorWorldVec = new Vector3();
+const loweredPos = new Vector3(-1.2, -2, -1.5);
+const defaultPos = new Vector3(-1.2, -0.7, -1.5);
+const cursorVec = new Vector3();
 const modelToCamVec = new Vector3();
+const plane = new Plane();
+const planeNormal = new Vector3();
 
 export default function ReloadObject(props) {
   const model = useRef();
   const modelLocalGroup = useRef();
   const { nodes } = useGLTF(martiniHenryCartUrl)
+  const { camera, scene, raycaster } = useThree();
+  const box = useRef();
 
   useFrame((state, delta) => {     
-    model.current.quaternion.copy(state.camera.quaternion);
+    const rot = new Quaternion().copy(state.camera.quaternion);
+    model.current.quaternion.copy(rot);
     model.current.position.copy(state.camera.position);
 
     // TODO: only affect y pos 
@@ -27,40 +31,40 @@ export default function ReloadObject(props) {
       if (!props.visible && easeFinished) model.visible = false;
       if (props.visible) model.visible = true;
     } else {
-      modelToCamVec.copy(state.camera.position);
-      modelToCamVec.sub(modelLocalGroup.current.position);
-      const dist = modelToCamVec.length();
+      state.camera.getWorldDirection(planeNormal).negate(); // parallel to the camera & facing it 
+      plane.normal = planeNormal;
+      plane.constant = 0.15000000000000002; // object centre
+      const helper = new PlaneHelper( plane, 1, 0xffff00 );
+      scene.add( helper );
+      setTimeout(() => {
+        scene.remove(helper);
+      }, 0.01);
 
-      // convert to NDC
+      // NDC coords
       const x = (props.x / window.innerWidth) * 2 - 1;
       const y = ((props.y / window.innerHeight) * 2 - 1) * -1;
-      cursorWorldVec.x = x;
-      cursorWorldVec.y = y;
-      cursorWorldVec.z = 0.5;
+      cursorVec.x = x;
+      cursorVec.y = y;
 
-      // convert to world
-      cursorWorldVec.unproject(state.camera);
-
-      // convert to local 
-      const cursorLocalVec = modelLocalGroup.current.worldToLocal(cursorWorldVec);
-      cursorLocalVec.sub(state.camera.position).normalize().multiplyScalar(dist);
-      cursorLocalVec.setZ(-1.5);
-      
-      modelLocalGroup.current.position.copy(cursorLocalVec);
+      const cursorVec3D = new Vector3().copy(cursorVec);
+      raycaster.setFromCamera(cursorVec, state.camera);
+      raycaster.ray.intersectPlane(plane, cursorVec3D);
+      const s = cursorVec3D.clone();
+      modelLocalGroup.current.worldToLocal(s);
+      modelLocalGroup.current.position.add(s);
     }
   });
 
   return (
-    <group ref={model} dispose={null} scale={0.1}>
-      <group ref={modelLocalGroup} position={loweredPos}>  
-        <mesh geometry={nodes["martini_henry_cart"].geometry} layers={[1]}>
-          <meshStandardMaterial color={props.grabbed ? "rgb(255, 251, 0)" : "rgb(232, 232, 232)"}/>
-          <Outlines color="black" thickness={1.5} angle={radToDeg(180)} />
-          <Edges color="black" lineWidth={1} />    
-        </mesh>
+    <Fragment>
+      <group ref={model} scale={0.1}>
+        <group ref={modelLocalGroup} position={loweredPos}>  
+          <mesh geometry={nodes["martini_henry_cart"].geometry} layers={[1]}>
+            <meshStandardMaterial color={"rgb(232, 232, 232)"}/>
+            <Outlines color="black" thickness={1.5} angle={radToDeg(180)} />
+          </mesh>
+        </group>
       </group>
-    </group>
+    </Fragment>
   )
 }
-
-useGLTF.preload("/assets/martini_henry_cart.glb");

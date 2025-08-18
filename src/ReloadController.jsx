@@ -21,17 +21,31 @@ const MARTINI_HENRY_RELOAD = [
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
     sensitivity: 1,
-    length: 3,
+    length: 2,
     refreshMagazine: false,
     direction: Directions.UP,
     ejectCartridge: true,
+    bones: [
+      {
+        name: "lever",
+        property: "rotation",
+        axis: "y",
+        starting: -1.1980975954537447,
+        target: -0.5,
+      },
+      {
+        name: "breachblock",
+        property: "rotation",
+        axis: "y",
+        starting: 1.5707963267948966,
+        target: 1.30,
+      },
+    ]
   },
   {
     type: ReloadMethodTypes.GRABBER,
     sensitivity: 1,
-    length: 3,
     refreshMagazine: true,
-    direction: Directions.UP,
   },
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
@@ -47,7 +61,7 @@ const grabRayOrigin = new Vector2();
 export default function ReloadController(props) {
   const reloadSchema = useRef(MARTINI_HENRY_RELOAD);
   const [reloadStage, setReloadStage] = useState(0);
-  const reloadProgress = useRef(0);
+  const [reloadProgress, setReloadProgress] = useState(0); // 0..1
   const reloadComplete = useRef(false);
   const [cursorX, setX] = useState(window.innerWidth / 2);
   const [cursorY, setY] = useState(window.innerHeight / 2);
@@ -73,12 +87,12 @@ export default function ReloadController(props) {
   }
 
   const tryFinishReload = () => {
-    if (reloadProgress.current < 1) return;
+    if (reloadProgress < 1) return false;
 
     const { totalStages, currStage, currStageIdx } = getReloadSchema();
     const nextStageIdx = currStageIdx + 1;
 
-    reloadProgress.current = 0;
+    setReloadProgress(0);
     setReloadStage(nextStageIdx);
     if (currStage.refreshMagazine) props.magazineCount.current = 1;
     if (currStage.ejectCartridge) props.magazineCount.current = 0;
@@ -86,8 +100,9 @@ export default function ReloadController(props) {
     if (currStageIdx + 1 === totalStages) {
       reloadComplete.current = true;
       setReloadStage(0);
-      return;
     }
+
+    return true;
   }
 
   useEffect(() => {
@@ -106,7 +121,7 @@ export default function ReloadController(props) {
       const x = (cursorX / window.innerWidth) * 2 - 1;
       const y = ((cursorY / window.innerHeight) * 2 - 1) * -1; // up is positive y in NDC space
       grabRayOrigin.x = x;
-      grabRayOrigin.y = y;
+      grabRayOrigin.y = y
       raycaster.setFromCamera(grabRayOrigin, camera);
       raycaster.layers.set(1);
       const intersections = raycaster.intersectObjects(scene.children);
@@ -148,19 +163,36 @@ export default function ReloadController(props) {
       if (!canReload()) return; 
       if (!currStageTypeOf(ReloadMethodTypes.MOUSE_MOTION)) return;
 
-      const { totalStages, currStage } = getReloadSchema();
+      const { currStage } = getReloadSchema();
       const mouseMovedDown = e.movementY > 0 && currStage.direction === Directions.DOWN;
       const mouseMovedUp = e.movementY < 0 && currStage.direction === Directions.UP;
 
       if (mouseMovedDown || mouseMovedUp) {
-        reloadProgress.current += Math.abs(e.movementY) / totalStages / 100.0;
-        tryFinishReload();
+        setReloadProgress(prev => (prev + Math.abs(e.movementY) / currStage.length / 100.0));
+        const finished = tryFinishReload();
+
+        if (currStage.bones) {
+          for (let i = 0; i < currStage.bones.length; i++) {
+            const { name, property, axis, target, starting } = currStage.bones[i]; 
+            const dist = target - starting; 
+            let step = starting + dist * reloadProgress;
+            if (
+              (step > target && starting < target) || 
+              (step < target && starting > target) ||
+              finished
+            ) {            
+              step = target;
+            }
+            
+            props.modelNodesRef.current[name][property][axis] = step;
+          }
+        }
       }
     };
 
     window.addEventListener("mousemove", motionReload); 
     return () => window.removeEventListener("mousemove", motionReload);
-  }, [reloadStage, props.isReloading]);
+  }, [reloadProgress, reloadStage, props.isReloading]);
 
   useEffect(() => {
     const keydown = (e) => {
@@ -171,7 +203,6 @@ export default function ReloadController(props) {
     const keyup = (e) => {
       if (e.code === "KeyR") { 
         props.setReloading(false);
-        reloadProgress.current = 0;
         reloadComplete.current = false;
         setReloadObjectGrabbed(false);
       }
@@ -198,10 +229,10 @@ export default function ReloadController(props) {
         {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading &&
           <div key="r" style={{
             position: "absolute",
-            left: `${cursorX}px`,
-            top: `${cursorY}px`,
+            left: `${cursorX + 50}px`,
+            top: `${cursorY - 50}px`,
           }}>     
-            <p>{reloadObjectGrabbed ? "cartridge grabbed" : ""}</p>
+            <p>{reloadObjectGrabbed ? ".577/450 cartridge" : ""}</p>
           </div>
         } 
       </props.ui.In>  
