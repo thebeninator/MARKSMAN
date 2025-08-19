@@ -30,7 +30,7 @@ export default function App(props) {
         <TargetSimple position={[0, -1.7 / 2, -200]} />
         <GunController 
           defaultZoom={1} 
-          aimZoom={1}
+          aimZoom={6}
           ui={props.ui}
         />
       </Physics>

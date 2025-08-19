@@ -16,6 +16,7 @@ export default function GunController(props) {
   const { camera } = useThree();
   const { isAiming } = useAdsController(pointerLocked, isReloading);
   const modelNodesRef = useRef();
+  const reloadOverrides = useRef({rotation: null, position: null});
 
   const setReloadingHandler = (isReloading) => {
     setReloading(isReloading);
@@ -69,16 +70,19 @@ export default function GunController(props) {
   return (
     <Fragment>
       <ReloadController 
+        ui={props.ui}
         magazineCount={magazineCount} 
         isReloading={isReloading} 
         setReloading={setReloadingHandler} 
-        ui={props.ui}
         modelNodesRef={modelNodesRef}
+        reloadOverrides={reloadOverrides}
       />
 
       <MartiniHenryModel 
         isAiming={isAiming} 
+        isReloading={isReloading} 
         modelNodesRef={modelNodesRef}
+        reloadOverrides={reloadOverrides}
       />
 
       {bullets.map(bullet => 

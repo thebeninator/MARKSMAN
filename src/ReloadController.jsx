@@ -21,7 +21,7 @@ const MARTINI_HENRY_RELOAD = [
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
     sensitivity: 1,
-    length: 2,
+    length: 1,
     refreshMagazine: false,
     direction: Directions.UP,
     ejectCartridge: true,
@@ -45,14 +45,33 @@ const MARTINI_HENRY_RELOAD = [
   {
     type: ReloadMethodTypes.GRABBER,
     sensitivity: 1,
-    refreshMagazine: true,
+    refreshMagazine: false,
+    rotationOverride: "reload",
+    positionOverride: "reload",
+    insertionObjectId: "breachblock"
   },
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
     sensitivity: 1,
-    length: 3,
-    refreshMagazine: false,
-    direction: Directions.DOWN
+    length: 1,
+    refreshMagazine: true,
+    direction: Directions.DOWN,
+    bones: [
+      {
+        name: "lever",
+        property: "rotation",
+        axis: "y",
+        starting: -0.5,
+        target:  -1.1980975954537447,
+      },
+      {
+        name: "breachblock",
+        property: "rotation",
+        axis: "y",
+        starting: 1.30,
+        target: 1.5707963267948966,
+      },
+    ]    
   },
 ];
 
@@ -70,6 +89,10 @@ export default function ReloadController(props) {
   const [reloadObjectGrabbed, setReloadObjectGrabbed] = useState(false);
   
   const [intersecting, yes] = useState(false);
+
+  const setReloadProgressHandler = (progress) => {
+    setReloadProgress(progress);
+  }
   
   const canReload = () => {
     return (props.isReloading && !reloadComplete.current);
@@ -92,6 +115,7 @@ export default function ReloadController(props) {
     const { totalStages, currStage, currStageIdx } = getReloadSchema();
     const nextStageIdx = currStageIdx + 1;
 
+    setReloadObjectGrabbed(false);
     setReloadProgress(0);
     setReloadStage(nextStageIdx);
     if (currStage.refreshMagazine) props.magazineCount.current = 1;
@@ -104,6 +128,15 @@ export default function ReloadController(props) {
 
     return true;
   }
+
+  useEffect(() => {
+    if (!props.isReloading) return;
+
+    const { currStage } = getReloadSchema();
+    props.reloadOverrides.current.rotation = currStage.rotationOverride ?? null;
+    props.reloadOverrides.current.position = currStage.positionOverride ?? null;
+
+  }, [props.isReloading, reloadStage]);
 
   useEffect(() => {
     if (!holdingLeftClick) {
@@ -221,6 +254,10 @@ export default function ReloadController(props) {
         x={cursorX} y={cursorY} 
         grabbed={reloadObjectGrabbed} 
         visible={currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading}
+        modelNodesRef={props.modelNodesRef}
+        insertionObjectId={reloadSchema.current[reloadStage].insertionObjectId ?? null}
+        setReloadProgress={setReloadProgressHandler}
+        tryFinishReload={tryFinishReload}
       />
 
       <props.ui.In>
