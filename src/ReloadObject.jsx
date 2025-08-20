@@ -1,9 +1,9 @@
-import { Edges, Outlines, useGLTF } from "@react-three/drei";
+import { Outlines, useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as easing from "maath/easing";
 import { useRef } from "react";
 import { Euler, Plane, Quaternion, Vector2, Vector3 } from "three";
-import { degToRad, radToDeg } from "three/src/math/MathUtils.js";
+import { radToDeg } from "three/src/math/MathUtils.js";
 import martiniHenryCartUrl from "./assets/martini_henry_cartridge2.glb";
 
 const startingRotQ = new Quaternion().setFromEuler(new Euler(Math.PI/2, 0, 0));
@@ -24,6 +24,8 @@ const insertionObjectScreen = new Vector3();
 
 const _ = new Vector3();
 
+
+// TODO: allow reload schema to specify insertion offset
 export default function ReloadObject(props) {
   const model = useRef();
   const modelLocalGroup = useRef();
@@ -34,30 +36,31 @@ export default function ReloadObject(props) {
   useFrame((state, delta) => {
     model.current.quaternion.copy(state.camera.quaternion);
     model.current.position.copy(state.camera.position);
-    geom.current.quaternion.rotateTowards(startingRotQ, 0.0174532925 / 2);
+    geom.current.quaternion.rotateTowards(startingRotQ, 0.0174532925 / 1.5);
 
     // TODO: only affect y pos 
     if (props.grabbed) {
       // handle cartridge dragging
       // shout out to jdh for the solution
       // https://youtu.be/PcMua73C_94?si=O9yMhoDlDsONTW4k&t=299
-      depth.copy(modelLocalGroup.current.position);
-      model.current.localToWorld(depth);
+      depth.setFromMatrixPosition(modelLocalGroup.current.matrixWorld);
+      model.current.worldToLocal(depth);
       state.camera.getWorldDirection(planeNormal).negate(); // parallel to the camera
 
       plane.normal = planeNormal;
-      plane.constant = -depth.z;
+      plane.constant = -depth.z / 10; // honestly, this doesnt seem like a complete solution, but it works
 
       const x = (props.x / window.innerWidth) * 2 - 1;
       const y = ((props.y / window.innerHeight) * 2 - 1) * -1;
       cursorVec.x = x;
       cursorVec.y = y;
-
+      
       raycaster.setFromCamera(cursorVec, state.camera);
       raycaster.ray.intersectPlane(plane, cursorVec3D);
       model.current.worldToLocal(cursorVec3D);
       const diff = cursorVec3D.sub(modelLocalGroup.current.position);
-      modelLocalGroup.current.position.add(diff);
+      const desired = modelLocalGroup.current.position.clone().add(diff);
+      easing.damp3(modelLocalGroup.current.position, desired, 0.1, delta);
       
       // handle insertion
       const insertionObject = props.modelNodesRef.current[props.insertionObjectId];
@@ -69,15 +72,15 @@ export default function ReloadObject(props) {
 
       const ios = new Vector2(insertionObjectScreen.x, insertionObjectScreen.y);
       const ros = new Vector2(reloadObjectScreen.x, reloadObjectScreen.y);
+      ios.x -= 0.07;
       ios.y += 0.10;
 
       insertionObjectRelativePosition.setFromMatrixPosition(insertionObject.matrixWorld);
       model.current.worldToLocal(insertionObjectRelativePosition);
 
       const startingZ = defaultPos.z;
-      const targetZ = insertionObjectRelativePosition.z - 0.35;
+      const targetZ = insertionObjectRelativePosition.z - 0.45;
       const zDist = targetZ - startingZ;
-      
       const dist = ros.distanceTo(ios);
       
       let progress = dist; 
@@ -85,11 +88,11 @@ export default function ReloadObject(props) {
       progress -= 1;                  // 0..-1
       progress *= -1;                 // 0..1   
 
-      //let step = startingZ + zDist * progress;
+      const step = startingZ + zDist * progress;
 
-      //modelLocalGroup.current.position.setZ(step);
-      easing.damp(modelLocalGroup.current.position, "z", targetZ, 1 - progress, delta, 5);
-      easing.dampQ(geom.current.quaternion, weaponModelQ, 1 - progress, delta);
+      //modelLocalGroup.current.position.setZ(step); // this causes the obj to FREAK OUT at certain points
+      easing.damp(modelLocalGroup.current.position, "z", step, 1.001 - progress, delta);
+      easing.dampQ(geom.current.quaternion, weaponModelQ, 1.001 - progress, delta);
     
       // TODO: do 2D collision rect here?
       if (dist <= 0.05) {

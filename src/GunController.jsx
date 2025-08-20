@@ -17,6 +17,7 @@ export default function GunController(props) {
   const { isAiming } = useAdsController(pointerLocked, isReloading);
   const modelNodesRef = useRef();
   const reloadOverrides = useRef({rotation: null, position: null});
+  const [justShot, setJustShot] = useState(false);
 
   const setReloadingHandler = (isReloading) => {
     setReloading(isReloading);
@@ -52,6 +53,11 @@ export default function GunController(props) {
       if (!pointerLocked.current) return;
       if (isReloading) return;
       if (magazineCount.current <= 0) return;
+      
+      setJustShot(true);
+      setTimeout(() => {
+        setJustShot(false);
+      }, 1);
 
       const newBullet = {
         id: crypto.randomUUID(), 
@@ -65,7 +71,7 @@ export default function GunController(props) {
 
     window.addEventListener("mousedown", shoot);
     return () => window.removeEventListener("mousedown", shoot);
-  }, [bullets, isReloading]);
+  }, [bullets, isReloading, justShot]);
 
   return (
     <Fragment>
@@ -83,6 +89,7 @@ export default function GunController(props) {
         isReloading={isReloading} 
         modelNodesRef={modelNodesRef}
         reloadOverrides={reloadOverrides}
+        justShot={justShot}
       />
 
       {bullets.map(bullet => 

@@ -7,7 +7,8 @@ import { degToRad, radToDeg } from "three/src/math/MathUtils.js";
 import martiniHenryUrl from "./assets/martini_henry.glb";
 
 const defaultRot = new Euler(0, 0, 0);
-const reloadRot =  new Euler(degToRad(7), degToRad(-5), degToRad(8));
+const reloadRot = new Euler(degToRad(7), degToRad(-5), degToRad(8));
+const recoilRot = new Euler(degToRad(0.6), degToRad(0.2), 0);
 
 const positions = {
   ads: new Vector3(0, -0.71, -6.0),
@@ -17,7 +18,8 @@ const positions = {
 
 const rotations = {
   default: new Quaternion().setFromEuler(defaultRot),
-  reload: new Quaternion().setFromEuler(reloadRot)
+  reload: new Quaternion().setFromEuler(reloadRot),
+  recoil: new Quaternion().setFromEuler(recoilRot)
 };
 
 export default function MartiniHenryModel(props) {
@@ -35,8 +37,16 @@ export default function MartiniHenryModel(props) {
     nodes["breachblock"].rotation.z = -Math.PI / 2;  
   }, []);
 
+  useEffect(() => {
+    if (!props.justShot) return; 
+    model.current.quaternion.multiply(rotations.recoil);
+    modelLocalGroup.current.position.setZ(modelLocalGroup.current.position.z + 0.34);
+    modelLocalGroup.current.position.setY(modelLocalGroup.current.position.y + 0.02);
+  }, [props.justShot]);
+
   useFrame((state, delta) => {
-    easing.dampQ(model.current.quaternion, state.camera.quaternion, 0.25, delta, 1, easing.exp, 0.0001);
+    const desiredRotQ = state.camera.quaternion.clone();
+    easing.dampQ(model.current.quaternion, desiredRotQ, 0.25, delta, 1, easing.exp, 0.0001);
     model.current.position.copy(state.camera.position);
 
     const desiredPos = props.reloadOverrides.current.position === null || !props.isReloading ? 
@@ -53,7 +63,6 @@ export default function MartiniHenryModel(props) {
     <Fragment>     
       <group ref={model} dispose={null} scale={0.1} name="global">
         <group ref={modelLocalGroup} position={positions.default} name="local">
-  
           <mesh geometry={nodes["ironsight"].geometry} renderOrder={1}>            
             <meshPhysicalMaterial
               color="rgb(232, 232, 232)" 
@@ -66,7 +75,7 @@ export default function MartiniHenryModel(props) {
             {!props.isAiming && <Edges color="black" lineWidth={1} />}
           </mesh>
 
-          <primitive object={nodes["body"]} />
+          <primitive object={nodes["body"]}/>
           <skinnedMesh geometry={geometry} skeleton={skeleton}>
             <meshStandardMaterial color="rgb(232, 232, 232)" />
             <Outlines color="black" thickness={1.5} />
