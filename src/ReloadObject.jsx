@@ -1,7 +1,7 @@
 import { Outlines, useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as easing from "maath/easing";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Euler, Plane, Quaternion, Vector2, Vector3 } from "three";
 import { radToDeg } from "three/src/math/MathUtils.js";
 import martiniHenryCartUrl from "./assets/martini_henry_cartridge2.glb";
@@ -24,14 +24,13 @@ const insertionObjectScreen = new Vector3();
 
 const _ = new Vector3();
 
-
 // TODO: allow reload schema to specify insertion offset
 export default function ReloadObject(props) {
   const model = useRef();
   const modelLocalGroup = useRef();
   const geom = useRef();
   const { nodes } = useGLTF(martiniHenryCartUrl)
-  const { raycaster } = useThree();
+  const { raycaster, scene } = useThree();
 
   useFrame((state, delta) => {
     model.current.quaternion.copy(state.camera.quaternion);
@@ -59,6 +58,21 @@ export default function ReloadObject(props) {
       raycaster.ray.intersectPlane(plane, cursorVec3D);
       model.current.worldToLocal(cursorVec3D);
       const diff = cursorVec3D.sub(modelLocalGroup.current.position);
+
+      raycaster.layers.set(0);
+      const diffN = new Vector3(diff.x, diff.y, 0).normalize();
+      raycaster.set(
+        new Vector3().setFromMatrixPosition(modelLocalGroup.current.matrixWorld), 
+        diffN
+      );
+      const intersections = raycaster.intersectObject(props.modelNodesRef.current["Cube001"], false); 
+      if (intersections.length > 0) {
+        const intersection = intersections[0];
+        if (intersection.distance < 0.02) {
+          diff.negate();
+        }
+      }
+
       const desired = modelLocalGroup.current.position.clone().add(diff);
       easing.damp3(modelLocalGroup.current.position, desired, 0.1, delta);
       
@@ -73,7 +87,7 @@ export default function ReloadObject(props) {
       const ios = new Vector2(insertionObjectScreen.x, insertionObjectScreen.y);
       const ros = new Vector2(reloadObjectScreen.x, reloadObjectScreen.y);
       ios.x -= 0.07;
-      ios.y += 0.10;
+      ios.y += 0.13;
 
       insertionObjectRelativePosition.setFromMatrixPosition(insertionObject.matrixWorld);
       model.current.worldToLocal(insertionObjectRelativePosition);
@@ -118,3 +132,5 @@ export default function ReloadObject(props) {
     </group>
   )
 }
+
+useGLTF.preload(martiniHenryCartUrl);

@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')).render(
       <p>TODO</p>
       <ul>
         <li>ejected shell casings</li>
-        <li>cartridge collision</li>
+        <li>cartridge collision [need to revisit]</li>
         <li>sfx manager</li>
         <li>particle fx manager</li>
         <li>recoil [sort of done]</li>

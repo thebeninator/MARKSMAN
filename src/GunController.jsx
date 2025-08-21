@@ -1,11 +1,12 @@
 import { PointerLockControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { euler, vec3 } from "@react-three/rapier";
-import { Fragment, useEffect, useRef, useState } from "react";
-import Bullet from "./Bullet";
-import MartiniHenryModel from "./MartiniHenry";
 import * as easing from "maath/easing";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Vector3 } from "three";
+import Bullet from "./Bullet";
 import useAdsController from "./gunHooks/useAdsController";
+import MartiniHenryModel from "./MartiniHenry";
 import ReloadController from "./ReloadController";
 
 export default function GunController(props) {
@@ -65,8 +66,9 @@ export default function GunController(props) {
         position: vec3().copy(camera.position).add(camera.getWorldDirection(vec3()).multiplyScalar(5)),
         muzzleVelocityVector: vec3({x: 0, y: 0, z: 1}).unproject(camera).normalize().multiplyScalar(411)
       };
-      magazineCount.current -= 1;
       setBullets(prev => ([...prev, newBullet]));
+
+      magazineCount.current -= 1;
     };
 
     window.addEventListener("mousedown", shoot);
@@ -75,7 +77,7 @@ export default function GunController(props) {
 
   return (
     <Fragment>
-      <ReloadController 
+      <ReloadController
         ui={props.ui}
         magazineCount={magazineCount} 
         isReloading={isReloading} 
@@ -102,7 +104,7 @@ export default function GunController(props) {
           onBulletHit={onBulletHit}
         />
       )}
-
+    
       <PointerLockControls 
         camera = {camera}
         onLock={ (e) => {pointerLocked.current = true } }

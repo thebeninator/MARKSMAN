@@ -1,9 +1,15 @@
-import { Fragment, useEffect, useRef, useState } from "react";
 import { useThree } from "@react-three/fiber";
-import { Vector2 } from "three";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Vector2, Vector3 } from "three";
+import Casing from "./Casing";
 import useMouseButtonHeldHandler from "./gunHooks/useMouseButtonHeldHandler";
 import ReloadCursor from "./ReloadCursor";
 import ReloadObject from "./ReloadObject";
+
+// TODO: maybe should create context for casings?
+const casingPosition = new Vector3();
+const casingVelocity = new Vector3(0, 0, 0);
+const casingAngularVelocity  = new Vector3(0, 6, 3);
 
 const ReloadMethodTypes = Object.freeze({
   MOUSE_MOTION: 0,
@@ -77,6 +83,7 @@ const MARTINI_HENRY_RELOAD = [
 
 const grabRayOrigin = new Vector2();
 
+// TODO: this component is way too large -> custom hooks? 
 export default function ReloadController(props) {
   const reloadSchema = useRef(MARTINI_HENRY_RELOAD);
   const [reloadStage, setReloadStage] = useState(0);
@@ -87,6 +94,7 @@ export default function ReloadController(props) {
   const { raycaster, camera, scene } = useThree();
   const { holdingLeftClick, holdingRightClick } = useMouseButtonHeldHandler();
   const [reloadObjectGrabbed, setReloadObjectGrabbed] = useState(false);
+  const [casings, setCasings] = useState([]);
   
   const [intersecting, yes] = useState(false);
 
@@ -119,7 +127,21 @@ export default function ReloadController(props) {
     setReloadProgress(0);
     setReloadStage(nextStageIdx);
     if (currStage.refreshMagazine) props.magazineCount.current = 1;
-    if (currStage.ejectCartridge) props.magazineCount.current = 0;
+    if (currStage.ejectCartridge) {
+      props.magazineCount.current = 0;
+      
+      casingPosition.setFromMatrixPosition(props.modelNodesRef.current["breachblock"].matrixWorld); 
+      casingVelocity.setX(0).setY(0.25).setZ(1).unproject(camera).normalize().multiplyScalar(4.5);
+      casingVelocity.setZ(-casingVelocity.z);
+
+      const newCasing = {
+        id: crypto.randomUUID(),
+        position: casingPosition.add(new Vector3(0, 0.008, 0)),
+        velocity: casingVelocity,
+        angVelocity: casingAngularVelocity
+      };
+      setCasings(prev => ([...prev, newCasing]));
+    };
 
     if (currStageIdx + 1 === totalStages) {
       reloadComplete.current = true;
@@ -259,6 +281,14 @@ export default function ReloadController(props) {
         setReloadProgress={setReloadProgressHandler}
         tryFinishReload={tryFinishReload}
       />
+
+      {casings.map(casing => 
+        <Casing
+          key={casing.id} id={casing.id}
+          position={casing.position}
+          velocity={casing.velocity} 
+        />
+      )}
 
       <props.ui.In>
         {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading && <ReloadCursor x={cursorX} y={cursorY} />}
