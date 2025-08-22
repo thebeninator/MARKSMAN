@@ -26,8 +26,8 @@ const Directions = Object.freeze({
 const MARTINI_HENRY_RELOAD = [
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
-    sensitivity: 1,
-    length: 1,
+    sensitivity: 2,
+    length: 0.5,
     refreshMagazine: false,
     direction: Directions.UP,
     ejectCartridge: true,
@@ -58,8 +58,8 @@ const MARTINI_HENRY_RELOAD = [
   },
   {
     type: ReloadMethodTypes.MOUSE_MOTION,
-    sensitivity: 1,
-    length: 1,
+    sensitivity: 2,
+    length: 0.5,
     refreshMagazine: true,
     direction: Directions.DOWN,
     bones: [
@@ -83,7 +83,7 @@ const MARTINI_HENRY_RELOAD = [
 
 const grabRayOrigin = new Vector2();
 
-// TODO: this component is way too large -> custom hooks? 
+// TODO: this component is way too large -> can we break this down into more custom hooks?
 export default function ReloadController(props) {
   const reloadSchema = useRef(MARTINI_HENRY_RELOAD);
   const [reloadStage, setReloadStage] = useState(0);
@@ -96,8 +96,6 @@ export default function ReloadController(props) {
   const [reloadObjectGrabbed, setReloadObjectGrabbed] = useState(false);
   const [casings, setCasings] = useState([]);
   
-  const [intersecting, yes] = useState(false);
-
   const setReloadProgressHandler = (progress) => {
     setReloadProgress(progress);
   }
@@ -117,6 +115,22 @@ export default function ReloadController(props) {
     return reloadSchema.current[reloadStage].type === type;
   }
 
+  const handleEjection = () => {
+    props.magazineCount.current = 0;
+    
+    casingPosition.setFromMatrixPosition(props.modelNodesRef.current["breachblock"].matrixWorld); 
+    casingVelocity.setX(0).setY(0).setZ(1).unproject(camera).normalize().multiplyScalar(4.5);
+    casingVelocity.setZ(-casingVelocity.z);
+
+    const newCasing = {
+      id: crypto.randomUUID(),
+      position: casingPosition.add(new Vector3(0, 0.008, 0)),
+      velocity: casingVelocity,
+      angVelocity: casingAngularVelocity
+    };
+    setCasings(prev => ([...prev, newCasing]));
+  }
+
   const tryFinishReload = () => {
     if (reloadProgress < 1) return false;
 
@@ -127,21 +141,7 @@ export default function ReloadController(props) {
     setReloadProgress(0);
     setReloadStage(nextStageIdx);
     if (currStage.refreshMagazine) props.magazineCount.current = 1;
-    if (currStage.ejectCartridge) {
-      props.magazineCount.current = 0;
-      
-      casingPosition.setFromMatrixPosition(props.modelNodesRef.current["breachblock"].matrixWorld); 
-      casingVelocity.setX(0).setY(0.25).setZ(1).unproject(camera).normalize().multiplyScalar(4.5);
-      casingVelocity.setZ(-casingVelocity.z);
-
-      const newCasing = {
-        id: crypto.randomUUID(),
-        position: casingPosition.add(new Vector3(0, 0.008, 0)),
-        velocity: casingVelocity,
-        angVelocity: casingAngularVelocity
-      };
-      setCasings(prev => ([...prev, newCasing]));
-    };
+    if (currStage.ejectCartridge) handleEjection();
 
     if (currStageIdx + 1 === totalStages) {
       reloadComplete.current = true;
@@ -182,12 +182,11 @@ export default function ReloadController(props) {
       const intersections = raycaster.intersectObjects(scene.children);
 
       setReloadObjectGrabbed(intersections.length > 0);
-      yes(intersections.length > 0);
     }
 
     window.addEventListener("mousedown", grabberReloadGrab); 
     return () => window.removeEventListener("mousedown", grabberReloadGrab); 
-  }, [cursorX, cursorY, intersecting]);
+  }, [cursorX, cursorY]);
 
   useEffect(() => {
     const grabberReloadMotion = (e) => {
@@ -232,9 +231,9 @@ export default function ReloadController(props) {
             const dist = target - starting; 
             let step = starting + dist * reloadProgress;
             if (
-              (step > target && starting < target) || 
-              (step < target && starting > target) ||
-              finished
+              (step > target && starting < target)  
+              || (step < target && starting > target) 
+              || finished
             ) {            
               step = target;
             }
@@ -247,7 +246,7 @@ export default function ReloadController(props) {
 
     window.addEventListener("mousemove", motionReload); 
     return () => window.removeEventListener("mousemove", motionReload);
-  }, [reloadProgress, reloadStage, props.isReloading]);
+  }, [casings, reloadProgress, reloadStage, props.isReloading]);
 
   useEffect(() => {
     const keydown = (e) => {
@@ -286,7 +285,8 @@ export default function ReloadController(props) {
         <Casing
           key={casing.id} id={casing.id}
           position={casing.position}
-          velocity={casing.velocity} 
+          velocity={casing.velocity}
+          angVelocity={casing.angVelocity} 
         />
       )}
 

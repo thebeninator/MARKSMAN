@@ -1,9 +1,13 @@
 import { Outlines, useGLTF } from "@react-three/drei";
 import { RigidBody } from "@react-three/rapier";
+import { memo } from "react";
 import { radToDeg } from "three/src/math/MathUtils.js";
 import martiniHenryCasingUrl from "./assets/martini_henry_casing.glb";
 
-export default function Casing(props) {
+// need to memoize otherwise ALL casings get re-rendered
+// and we end up with funky rapier behaviour 
+const Casing = memo(function Casing(props) {
+  // TODO: use useObjectExpiry
   const { nodes } = useGLTF(martiniHenryCasingUrl);
 
   return (
@@ -15,10 +19,12 @@ export default function Casing(props) {
     >
       <mesh geometry={nodes["martini_henry_casing"].geometry}>
         <meshStandardMaterial color={"rgb(232, 232, 232)"}/>
-        <Outlines color="black" thickness={1.5} angle={radToDeg(180)} />
+        <Outlines color="black" thickness={1.5} angle={0} />
       </mesh>
     </RigidBody>
   );
-}
+});
+
+export default Casing;
 
 useGLTF.preload(martiniHenryCasingUrl);

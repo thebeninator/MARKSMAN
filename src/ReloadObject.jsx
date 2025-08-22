@@ -126,7 +126,7 @@ export default function ReloadObject(props) {
       <group ref={modelLocalGroup} position={loweredPos}>  
         <mesh ref={geom} geometry={nodes["martini_henry_cart"].geometry} layers={[1]} quaternion={startingRotQ}>
           <meshStandardMaterial color={"rgb(232, 232, 232)"}/>
-          <Outlines color="black" thickness={1.5} angle={radToDeg(180)} />
+          <Outlines color="black" thickness={1.5} />
         </mesh>
       </group>
     </group>
