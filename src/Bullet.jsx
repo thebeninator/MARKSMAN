@@ -1,11 +1,11 @@
 import { Outlines } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody, vec3 } from "@react-three/rapier";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import useObjectExpiry from "./hooks/useObjectExpiry";
 import { radToDeg } from "three/src/math/MathUtils.js";
 
-export default function Bullet(props) {
+const Bullet = memo(function Bullet(props) {
   const ref = useRef();
   const muzzleVelocity = useRef(props.muzzleVelocityVector.length());
 
@@ -41,4 +41,6 @@ export default function Bullet(props) {
       </mesh>
     </RigidBody>
   );
-}
+});
+
+export default Bullet;

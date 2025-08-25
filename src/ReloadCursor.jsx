@@ -8,7 +8,7 @@ export default function ReloadCursor(props) {
       height: "10px",
       borderRadius: "50%",
       transform: "translate3d(-50%, -50%, 0)",
-      border: "2px solid rgb(0, 0, 0)"
+      border: "2px solid rgba(255, 0, 0, 1)"
     }}/>
   );
 }

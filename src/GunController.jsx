@@ -3,10 +3,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { euler, vec3 } from "@react-three/rapier";
 import * as easing from "maath/easing";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Vector3 } from "three";
 import Bullet from "./Bullet";
-import useAdsController from "./gunHooks/useAdsController";
-import MartiniHenryModel from "./MartiniHenry";
+import useAdsController from "./hooks/gunHooks/useAdsController";
+import useModelController from "./hooks/gunHooks/useModelController";
 import ReloadController from "./ReloadController";
 
 export default function GunController(props) {
@@ -16,9 +15,15 @@ export default function GunController(props) {
   const magazineCount = useRef(1);  
   const { camera } = useThree();
   const { isAiming } = useAdsController(pointerLocked, isReloading);
-  const modelNodesRef = useRef();
   const reloadOverrides = useRef({rotation: null, position: null});
   const [justShot, setJustShot] = useState(false);
+
+  useModelController({
+    justShot: justShot,
+    isAiming: isAiming,
+    reloadOverrides: reloadOverrides,
+    isReloading: isReloading
+  });
 
   const setReloadingHandler = (isReloading) => {
     setReloading(isReloading);
@@ -36,6 +41,7 @@ export default function GunController(props) {
   }
 
   const onBulletHit = (manifold, id) => {
+    console.log(manifold);
     destroyBullet(id);
   }
   
@@ -82,16 +88,7 @@ export default function GunController(props) {
         magazineCount={magazineCount} 
         isReloading={isReloading} 
         setReloading={setReloadingHandler} 
-        modelNodesRef={modelNodesRef}
         reloadOverrides={reloadOverrides}
-      />
-
-      <MartiniHenryModel 
-        isAiming={isAiming} 
-        isReloading={isReloading} 
-        modelNodesRef={modelNodesRef}
-        reloadOverrides={reloadOverrides}
-        justShot={justShot}
       />
 
       {bullets.map(bullet => 

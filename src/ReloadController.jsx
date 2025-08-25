@@ -1,10 +1,11 @@
 import { useThree } from "@react-three/fiber";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, use, useEffect, useRef, useState } from "react";
 import { Vector2, Vector3 } from "three";
 import Casing from "./Casing";
-import useMouseButtonHeldHandler from "./gunHooks/useMouseButtonHeldHandler";
+import useMouseButtonHeldHandler from "./hooks/gunHooks/useMouseButtonHeldHandler";
 import ReloadCursor from "./ReloadCursor";
 import ReloadObject from "./ReloadObject";
+import GunContext from "./GunContext";
 
 // TODO: maybe should create context for casings?
 const casingPosition = new Vector3();
@@ -95,6 +96,7 @@ export default function ReloadController(props) {
   const { holdingLeftClick, holdingRightClick } = useMouseButtonHeldHandler();
   const [reloadObjectGrabbed, setReloadObjectGrabbed] = useState(false);
   const [casings, setCasings] = useState([]);
+  const gun = use(GunContext);
   
   const setReloadProgressHandler = (progress) => {
     setReloadProgress(progress);
@@ -118,7 +120,7 @@ export default function ReloadController(props) {
   const handleEjection = () => {
     props.magazineCount.current = 0;
     
-    casingPosition.setFromMatrixPosition(props.modelNodesRef.current["breachblock"].matrixWorld); 
+    casingPosition.setFromMatrixPosition(gun.nodes["breachblock"].matrixWorld); 
     casingVelocity.setX(0).setY(0).setZ(1).unproject(camera).normalize().multiplyScalar(4.5);
     casingVelocity.setZ(-casingVelocity.z);
 
@@ -238,7 +240,7 @@ export default function ReloadController(props) {
               step = target;
             }
             
-            props.modelNodesRef.current[name][property][axis] = step;
+            gun.nodes[name][property][axis] = step;
           }
         }
       }
@@ -275,20 +277,19 @@ export default function ReloadController(props) {
         x={cursorX} y={cursorY} 
         grabbed={reloadObjectGrabbed} 
         visible={currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading}
-        modelNodesRef={props.modelNodesRef}
         insertionObjectId={reloadSchema.current[reloadStage].insertionObjectId ?? null}
         setReloadProgress={setReloadProgressHandler}
         tryFinishReload={tryFinishReload}
       />
 
-      {casings.map(casing => 
+      {/*casings.map(casing => 
         <Casing
           key={casing.id} id={casing.id}
           position={casing.position}
           velocity={casing.velocity}
           angVelocity={casing.angVelocity} 
         />
-      )}
+      )*/}
 
       <props.ui.In>
         {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading && <ReloadCursor x={cursorX} y={cursorY} />}
