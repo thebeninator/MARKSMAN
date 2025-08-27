@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { Vector3 } from "three";
 
-// RigidBody components will not automatically follow its parent
+// RigidBody components will not automatically follow their parent(s)
 export default function useColliderFollower(collider, world, local) {
   useFrame(() => {
     const pos = new Vector3();

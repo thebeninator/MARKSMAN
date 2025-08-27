@@ -67,15 +67,11 @@ export default function ReloadObject(props) {
       raycaster.setFromCamera(cursorVec, state.camera);
       raycaster.ray.intersectPlane(plane, cursorVec3D);
 
-      const collC3D = new Vector3();
-      raycaster.ray.intersectPlane(plane, collC3D);
+      const collC3D = cursorVec3D.clone();
 
       model.current.worldToLocal(cursorVec3D);
       const diff = cursorVec3D.sub(modelLocalGroup.current.position);
       const desired = modelLocalGroup.current.position.clone().add(diff);
-
-      const desiredWorld = model.current.localToWorld(desired.clone());
-      const colDiff = vec3(collider.current.translation()).sub(desiredWorld).negate();
 
       collider.current.setTranslation(collC3D);
       if (!isColliding.current) {      
@@ -93,7 +89,7 @@ export default function ReloadObject(props) {
 
       const ios = new Vector2(insertionObjectScreen.x, insertionObjectScreen.y);
       const ros = new Vector2(reloadObjectScreen.x, reloadObjectScreen.y);
-      ios.x -= 0.07;
+      ios.x -= 0.02;
       ios.y += 0.13;
 
       insertionObjectRelativePosition.setFromMatrixPosition(insertionObject.matrixWorld);
@@ -137,7 +133,7 @@ export default function ReloadObject(props) {
           <Outlines color="black" thickness={1.5} />
         </mesh>
 
-        <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockRotations scale={0.9}
+        <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockRotations scale={[1, 1, 0.7]}
           onCollisionEnter={() => {
             isColliding.current = true;
           }}
