@@ -5,7 +5,7 @@ import { use, useRef } from "react";
 import { ArrowHelper, Euler, Plane, Quaternion, Ray, Vector2, Vector3 } from "three";
 import martiniHenryCartUrl from "./assets/martini_henry_cartridge.glb";
 import GunContext from "./GunContext";
-import { quat, RigidBody, vec3 } from "@react-three/rapier";
+import { interactionGroups, quat, RigidBody, vec3 } from "@react-three/rapier";
 import useColliderFollower from "./hooks/useColliderFollower";
 
 const startingRotQ = new Quaternion().setFromEuler(new Euler(Math.PI/2, 0, 0));
@@ -72,10 +72,12 @@ export default function ReloadObject(props) {
       model.current.worldToLocal(cursorVec3D);
       const diff = cursorVec3D.sub(modelLocalGroup.current.position);
       const desired = modelLocalGroup.current.position.clone().add(diff);
-
+      const oldCollPos = vec3(collider.current.translation());
       collider.current.setTranslation(collC3D);
       if (!isColliding.current) {      
         modelLocalGroup.current.position.copy(desired);
+      } else {
+        collider.current.setTranslation(oldCollPos);
       }
       //easing.damp3(modelLocalGroup.current.position, desired, 0.1, delta);
       
@@ -106,10 +108,11 @@ export default function ReloadObject(props) {
       progress *= -1;                 // 0..1   
 
       const step = startingZ + zDist * progress;
+      const targetQ = progress < 0.3 ? startingRotQ : weaponModelQ;
 
       //modelLocalGroup.current.position.setZ(step); // this causes the obj to FREAK OUT at certain points
       easing.damp(modelLocalGroup.current.position, "z", step, 1 - progress, delta);
-      easing.dampQ(geom.current.quaternion, weaponModelQ, 1 - progress, delta);
+      easing.dampQ(geom.current.quaternion, targetQ, 1 - progress, delta);
     
       // TODO: do 2D collision rect here?
       if (dist <= 0.05) {
@@ -134,6 +137,7 @@ export default function ReloadObject(props) {
         </mesh>
 
         <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockRotations scale={[1, 1, 0.7]}
+          collisionGroups={interactionGroups(1, [1])}
           onCollisionEnter={() => {
             isColliding.current = true;
           }}

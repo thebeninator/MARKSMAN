@@ -1,5 +1,5 @@
 import { Outlines, useGLTF } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
+import { interactionGroups, RigidBody } from "@react-three/rapier";
 import { memo } from "react";
 import { radToDeg } from "three/src/math/MathUtils.js";
 import martiniHenryCasingUrl from "./assets/martini_henry_casing.glb";
@@ -16,6 +16,7 @@ const Casing = memo(function Casing(props) {
       scale={0.1}
       linearVelocity={props.velocity}
       angularVelocity={props.angVelocity}
+      collisionGroups={interactionGroups(0, [0])}
     >
       <mesh geometry={nodes["martini_henry_casing"].geometry}>
         <meshStandardMaterial color={"rgb(232, 232, 232)"}/>

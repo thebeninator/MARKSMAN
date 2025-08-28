@@ -1,5 +1,5 @@
 import { Outlines, useGLTF } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
+import { interactionGroups, RigidBody } from "@react-three/rapier";
 import { Fragment, useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import martiniHenryUrl from "./assets/martini_henry.glb";
@@ -39,7 +39,9 @@ export default function Gun(props) {
             <Outlines color="black" thickness={1.5} />
           </skinnedMesh>
 
-          <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockTranslations lockRotations>
+          <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockTranslations lockRotations
+            collisionGroups={interactionGroups(1, [1])}
+          >
             <mesh geometry={nodes["collider008"].geometry} visible={false} />
           </RigidBody>
         </group>

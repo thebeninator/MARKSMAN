@@ -1,9 +1,9 @@
 import { Edges } from "@react-three/drei";
-import { CuboidCollider, RigidBody } from "@react-three/rapier";
+import { CuboidCollider, interactionGroups, RigidBody } from "@react-three/rapier";
 
 export default function Floor() {
   return (
-    <RigidBody key="d" type="fixed" name="floor" colliders={false}>
+    <RigidBody key="d" type="fixed" name="floor" colliders={false} collisionGroups={interactionGroups(0, [0])} >
       <mesh receiveShadow position={[0, -1.7, 0]} rotation={[-Math.PI / 2.0, 0, 0]}>
         <planeGeometry args={[5000, 5000]} />
         <meshStandardMaterial color="rgba(128, 128, 128, 1)" />

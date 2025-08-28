@@ -282,14 +282,14 @@ export default function ReloadController(props) {
         tryFinishReload={tryFinishReload}
       />
 
-      {/*casings.map(casing => 
+      {casings.map(casing => 
         <Casing
           key={casing.id} id={casing.id}
           position={casing.position}
           velocity={casing.velocity}
           angVelocity={casing.angVelocity} 
         />
-      )*/}
+      )}
 
       <props.ui.In>
         {currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading && <ReloadCursor x={cursorX} y={cursorY} />}
