@@ -1,34 +1,18 @@
 import { useFrame } from "@react-three/fiber";
 import * as easing from "maath/easing";
 import { use, useEffect } from "react";
-import { Euler, Quaternion, Vector3 } from "three";
-import { degToRad } from "three/src/math/MathUtils.js";
-import GunContext from "../../GunContext";
-
-const defaultRot = new Euler(0, 0, 0);
-const reloadRot = new Euler(degToRad(7), degToRad(-5), degToRad(8));
-const recoilRot = new Euler(degToRad(0.3), degToRad(0.2), 0);
-
-const positions = {
-  ads: new Vector3(0, -0.71, -6.0),
-  default: new Vector3(1.2, -1.0, -6.0),
-  reload: new Vector3(1.2, -1.0, -5.0)
-};
-
-const rotations = {
-  default: new Quaternion().setFromEuler(defaultRot),
-  reload: new Quaternion().setFromEuler(reloadRot),
-  recoil: new Quaternion().setFromEuler(recoilRot)
-};
+import GunContext from "../../components/gun/GunContext";
 
 export default function useModelController(props) {
   const gun = use(GunContext);
+  const positions = gun.schema.model.positions;
+  const rotations = gun.schema.model.rotations;
 
   useEffect(() => {
     if (!props.justShot) return; 
     gun.model.current.quaternion.multiply(rotations.recoil);
-    gun.modelLocalGroup.current.position.setZ(gun.modelLocalGroup.current.position.z + 0.30);
-    gun.modelLocalGroup.current.position.setY(gun.modelLocalGroup.current.position.y + 0.01);
+    gun.modelLocal.current.position.setZ(gun.modelLocal.current.position.z + 0.30);
+    gun.modelLocal.current.position.setY(gun.modelLocal.current.position.y + 0.01);
   }, [props.justShot]);
 
   useFrame((state, delta) => {
@@ -42,7 +26,7 @@ export default function useModelController(props) {
     const desiredRot = props.reloadOverrides.current.rotation === null || !props.isReloading ? 
       rotations.default : rotations[props.reloadOverrides.current.rotation];
 
-    easing.damp3(gun.modelLocalGroup.current.position, desiredPos, 0.25, delta);
-    easing.dampQ(gun.modelLocalGroup.current.quaternion, desiredRot, 0.25, delta, 1, easing.exp, 0.0001);
+    easing.damp3(gun.modelLocal.current.position, desiredPos, 0.25, delta);
+    easing.dampQ(gun.modelLocal.current.quaternion, desiredRot, 0.25, delta, 1, easing.exp, 0.0001);
   });
 }

@@ -1,11 +1,13 @@
 import { Euler, Quaternion, Vector3 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
+import { ReloadMethodTypes, Directions } from "../enums/reloadEnums";
+import { useGLTF } from "@react-three/drei";
 
 const defaultRot = new Euler(0, 0, 0);
 const reloadRot = new Euler(degToRad(7), degToRad(-5), degToRad(8));
 const recoilRot = new Euler(degToRad(0.3), degToRad(0.2), 0);
 
-const martiniHenry = {
+const MartiniHenrySchema = {
   id: "martini_henry",
 
   data: {
@@ -25,10 +27,11 @@ const martiniHenry = {
   model: {
     url: "/src/assets/martini_henry.glb",
     root: "Cube001",
+    collider: "collider008",
     rootBone: "body",
     positions: {
-      default: new Vector3(1.2, -1.0, -6.0),
-      reload: new Vector3(1.2, -1.0, -5.0),
+      default: new Vector3(0.7, -1.0, -6.0),
+      reload: new Vector3(0.7, -1.0, -5.0),
       ads: new Vector3(0, -0.71, -6.0),
     },
     rotations: {
@@ -49,6 +52,7 @@ const martiniHenry = {
   casing: {
     url: "/src/assets/martini_henry_casing.glb",
     root: "martini_henry_casing",
+    spawner: "breachblock"
   },
 
   reloadSchema: [
@@ -106,5 +110,8 @@ const martiniHenry = {
     },
   ],
 };
+useGLTF.preload(MartiniHenrySchema.model.url);
+useGLTF.preload(MartiniHenrySchema.cartridge.url);
+useGLTF.preload(MartiniHenrySchema.casing.url);
 
-export default martiniHenry
+export default MartiniHenrySchema

@@ -2,19 +2,18 @@ import { Outlines, useGLTF } from "@react-three/drei";
 import { interactionGroups, RigidBody } from "@react-three/rapier";
 import { Fragment, useEffect, useRef } from "react";
 import { Vector3 } from "three";
-import martiniHenryUrl from "./assets/martini_henry.glb";
 import GunContext from "./GunContext";
-import useColliderFollower from "./hooks/useColliderFollower";
+import useColliderFollower from "../../hooks/useColliderFollower";
 
 export default function Gun(props) {
-  const { nodes } = useGLTF(martiniHenryUrl);
+  const { nodes } = useGLTF(props.schema.model.url);
   const model = useRef();
-  const modelLocalGroup = useRef();
+  const modelLocal = useRef();
   const collider = useRef();
-  const geometry = nodes["Cube001"].geometry;
-  const skeleton = nodes["Cube001"].skeleton;
+  const geometry = nodes[props.schema.model.root].geometry;
+  const skeleton = nodes[props.schema.model.root].skeleton;
 
-  useColliderFollower(collider, model, modelLocalGroup);
+  useColliderFollower(collider, model, modelLocal);
 
   // correct some odd rotation behaviour, might be gimbal lock?
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function Gun(props) {
   return (
     <Fragment>
       <group ref={model} dispose={null} scale={0.1} name="global">
-        <group ref={modelLocalGroup} name="local" position={new Vector3(1.2, -1.0, -6.0)}>
+        <group ref={modelLocal} name="local" position={new Vector3(1.2, -1.0, -6.0)}>
           {/* ironsights used to be transparent on ADS, hence why its a separate mesh */}
           <mesh geometry={nodes["ironsight"].geometry} renderOrder={1}>            
             <meshStandardMaterial color="rgb(232, 232, 232)" />
@@ -42,7 +41,7 @@ export default function Gun(props) {
           <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockTranslations lockRotations
             collisionGroups={interactionGroups(1, [1])}
           >
-            <mesh geometry={nodes["collider008"].geometry} visible={false} />
+            <mesh geometry={nodes[props.schema.model.collider].geometry} visible={false} />
           </RigidBody>
         </group>
       </group>
@@ -50,12 +49,11 @@ export default function Gun(props) {
       <GunContext.Provider value={{
         nodes: nodes,
         model: model,
-        modelLocalGroup: modelLocalGroup
+        modelLocal: modelLocal,
+        schema: props.schema
       }}>
         {props.children}
       </GunContext.Provider>
     </Fragment>
   );
 }
-
-useGLTF.preload(martiniHenryUrl);

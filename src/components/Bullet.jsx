@@ -2,8 +2,7 @@ import { Outlines } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody, vec3 } from "@react-three/rapier";
 import { memo, useRef } from "react";
-import useObjectExpiry from "./hooks/useObjectExpiry";
-import { radToDeg } from "three/src/math/MathUtils.js";
+import useObjectExpiry from "../hooks/useObjectExpiry";
 
 const Bullet = memo(function Bullet(props) {
   const ref = useRef();

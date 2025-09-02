@@ -1,12 +1,11 @@
 import { Outlines, useGLTF } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
+import { interactionGroups, quat, RigidBody, vec3 } from "@react-three/rapier";
 import * as easing from "maath/easing";
 import { use, useRef } from "react";
-import { ArrowHelper, Euler, Plane, Quaternion, Ray, Vector2, Vector3 } from "three";
-import martiniHenryCartUrl from "./assets/martini_henry_cartridge.glb";
-import GunContext from "./GunContext";
-import { interactionGroups, quat, RigidBody, vec3 } from "@react-three/rapier";
-import useColliderFollower from "./hooks/useColliderFollower";
+import { Euler, Plane, Quaternion, Vector2, Vector3 } from "three";
+import useColliderFollower from "../../hooks/useColliderFollower";
+import GunContext from "../gun/GunContext";
 
 const startingRotQ = new Quaternion().setFromEuler(new Euler(Math.PI/2, 0, 0));
 
@@ -28,23 +27,22 @@ const _ = new Vector3();
 
 // TODO: allow reload schema to specify insertion offset
 export default function ReloadObject(props) {
-  const model = useRef();
-  const modelLocalGroup = useRef();
-  const geom = useRef();
-  const collider = useRef();
-  const { nodes } = useGLTF(martiniHenryCartUrl)
-  const { raycaster, scene } = useThree();
   const gun = use(GunContext);
+  const model = useRef();
+  const modelLocal = useRef();
+  const mesh = useRef();
+  const collider = useRef();
+  const { nodes } = useGLTF(gun.schema.cartridge.url);
   const isColliding = useRef(false);
 
-  useColliderFollower(collider, model, modelLocalGroup);
+  useColliderFollower(collider, model, modelLocal);
 
   useFrame((state, delta) => {
     model.current.quaternion.copy(state.camera.quaternion);
     model.current.position.copy(state.camera.position);
 
     const colliderRotQ = quat(collider.current.rotation());
-    colliderRotQ.multiply(geom.current.quaternion);
+    colliderRotQ.multiply(mesh.current.quaternion);
     collider.current.setRotation(colliderRotQ);
 
     // TODO: only affect y pos 
@@ -52,7 +50,7 @@ export default function ReloadObject(props) {
       // handle cartridge dragging
       // shout out to jdh for the solution
       // https://youtu.be/PcMua73C_94?si=O9yMhoDlDsONTW4k&t=299
-      depth.setFromMatrixPosition(modelLocalGroup.current.matrixWorld);
+      depth.setFromMatrixPosition(modelLocal.current.matrixWorld);
       model.current.worldToLocal(depth);
       state.camera.getWorldDirection(planeNormal).negate(); // parallel to the camera
 
@@ -64,20 +62,18 @@ export default function ReloadObject(props) {
       cursorVec.x = x;
       cursorVec.y = y;
       
-      raycaster.setFromCamera(cursorVec, state.camera);
-      raycaster.ray.intersectPlane(plane, cursorVec3D);
+      state.raycaster.setFromCamera(cursorVec, state.camera);
+      state.raycaster.ray.intersectPlane(plane, cursorVec3D);
 
       const collC3D = cursorVec3D.clone();
 
       model.current.worldToLocal(cursorVec3D);
-      const diff = cursorVec3D.sub(modelLocalGroup.current.position);
-      const desired = modelLocalGroup.current.position.clone().add(diff);
-      const oldCollPos = vec3(collider.current.translation());
+      const diff = cursorVec3D.sub(modelLocal.current.position);
+      const desired = modelLocal.current.position.clone().add(diff);
+
       collider.current.setTranslation(collC3D);
       if (!isColliding.current) {      
-        modelLocalGroup.current.position.copy(desired);
-      } else {
-        collider.current.setTranslation(oldCollPos);
+        modelLocal.current.position.copy(desired);
       }
       //easing.damp3(modelLocalGroup.current.position, desired, 0.1, delta);
       
@@ -87,7 +83,7 @@ export default function ReloadObject(props) {
       const weaponModelQ = weaponModel.quaternion.clone();
       
       insertionObjectScreen.setFromMatrixPosition(insertionObject.matrixWorld).project(state.camera);
-      reloadObjectScreen.setFromMatrixPosition(modelLocalGroup.current.matrixWorld).project(state.camera);
+      reloadObjectScreen.setFromMatrixPosition(modelLocal.current.matrixWorld).project(state.camera);
 
       const ios = new Vector2(insertionObjectScreen.x, insertionObjectScreen.y);
       const ros = new Vector2(reloadObjectScreen.x, reloadObjectScreen.y);
@@ -111,8 +107,8 @@ export default function ReloadObject(props) {
       const targetQ = progress < 0.3 ? startingRotQ : weaponModelQ;
 
       //modelLocalGroup.current.position.setZ(step); // this causes the obj to FREAK OUT at certain points
-      easing.damp(modelLocalGroup.current.position, "z", step, 1 - progress, delta);
-      easing.dampQ(geom.current.quaternion, targetQ, 1 - progress, delta);
+      easing.damp(modelLocal.current.position, "z", step, 1 - progress, delta);
+      easing.dampQ(mesh.current.quaternion, targetQ, 1 - progress, delta);
     
       // TODO: do 2D collision rect here?
       if (dist <= 0.05) {
@@ -121,8 +117,8 @@ export default function ReloadObject(props) {
         props.tryFinishReload();
       }      
     } else {
-      geom.current.quaternion.rotateTowards(startingRotQ, 0.0174532925 / 1.5);
-      const easeFinished = !easing.damp3(modelLocalGroup.current.position, props.visible ? defaultPos : loweredPos, 0.25, delta);
+      mesh.current.quaternion.rotateTowards(startingRotQ, 0.0174532925 / 1.5);
+      const easeFinished = !easing.damp3(modelLocal.current.position, props.visible ? defaultPos : loweredPos, 0.25, delta);
       if (!props.visible && easeFinished) model.current.visible = false;
       if (props.visible) model.current.visible = true;
     }
@@ -130,13 +126,13 @@ export default function ReloadObject(props) {
 
   return (
     <group ref={model} scale={0.1}>
-      <group ref={modelLocalGroup} position={loweredPos}>  
-        <mesh ref={geom} geometry={nodes["martini_henry_cart"].geometry} layers={[1]} quaternion={startingRotQ}>
+      <group ref={modelLocal} position={loweredPos}>  
+        <mesh ref={mesh} geometry={nodes[gun.schema.cartridge.root].geometry} layers={[1]} quaternion={startingRotQ}>
           <meshStandardMaterial color={"rgb(232, 232, 232)"}/>
           <Outlines color="black" thickness={1.5} />
         </mesh>
 
-        <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockRotations scale={[1, 1, 0.7]}
+        <RigidBody ref={collider} gravityScale={0} colliders="trimesh" includeInvisible lockRotations scale={[0.7, 0.7, 0.7]}
           collisionGroups={interactionGroups(1, [1])}
           onCollisionEnter={() => {
             isColliding.current = true;
@@ -145,11 +141,9 @@ export default function ReloadObject(props) {
             isColliding.current = false;
           }}
         >
-          <mesh geometry={nodes["martini_henry_cart"].geometry} visible={false} />
+          <mesh geometry={nodes[gun.schema.cartridge.root].geometry} visible={false} />
         </RigidBody>
       </group>
     </group>
   )
 }
-
-useGLTF.preload(martiniHenryCartUrl);

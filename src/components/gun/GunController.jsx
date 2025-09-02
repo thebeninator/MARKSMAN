@@ -2,17 +2,20 @@ import { PointerLockControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { euler, vec3 } from "@react-three/rapier";
 import * as easing from "maath/easing";
-import { Fragment, useEffect, useRef, useState } from "react";
-import Bullet from "./Bullet";
-import useAdsController from "./hooks/gunHooks/useAdsController";
-import useModelController from "./hooks/gunHooks/useModelController";
-import ReloadController from "./ReloadController";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
+import Bullet from "../Bullet";
+import useAdsController from "../../hooks/gunHooks/useAdsController";
+import useModelController from "../../hooks/gunHooks/useModelController";
+import ReloadController from "../reload/ReloadController";
+import GunContext from "./GunContext";
+import Sound from "../../Sound";
 
 export default function GunController(props) {
+  const gun = useContext(GunContext);
   const [bullets, setBullets] = useState([]);
   const [isReloading, setReloading] = useState(false);
   const pointerLocked = useRef(false);
-  const magazineCount = useRef(1);  
+  const magazineCount = useRef(gun.schema.data.magazineSize);  
   const { camera } = useThree();
   const { isAiming } = useAdsController(pointerLocked, isReloading);
   const reloadOverrides = useRef({rotation: null, position: null});
@@ -41,7 +44,6 @@ export default function GunController(props) {
   }
 
   const onBulletHit = (manifold, id) => {
-    console.log(manifold);
     destroyBullet(id);
   }
   
@@ -70,7 +72,7 @@ export default function GunController(props) {
         id: crypto.randomUUID(), 
         rotation: euler().copy(camera.rotation),
         position: vec3().copy(camera.position).add(camera.getWorldDirection(vec3()).multiplyScalar(5)),
-        muzzleVelocityVector: vec3({x: 0, y: 0, z: 1}).unproject(camera).normalize().multiplyScalar(411)
+        muzzleVelocityVector: vec3({x: 0, y: 0, z: 1}).unproject(camera).normalize().multiplyScalar(gun.schema.data.muzzleVelocity)
       };
       setBullets(prev => ([...prev, newBullet]));
 
@@ -83,6 +85,7 @@ export default function GunController(props) {
 
   return (
     <Fragment>
+      {justShot && <Sound />} 
       <ReloadController
         ui={props.ui}
         magazineCount={magazineCount} 
@@ -93,10 +96,8 @@ export default function GunController(props) {
 
       {bullets.map(bullet => 
         <Bullet
-          key={bullet.id} id={bullet.id} 
-          rotation={bullet.rotation} 
-          position={bullet.position}
-          muzzleVelocityVector={bullet.muzzleVelocityVector}
+          key={bullet.id}
+          {...bullet}
           destroyBullet={destroyBullet}
           onBulletHit={onBulletHit}
         />
