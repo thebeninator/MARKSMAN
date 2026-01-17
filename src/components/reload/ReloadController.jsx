@@ -1,91 +1,24 @@
 import { useThree } from "@react-three/fiber";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, use, useEffect, useRef, useState } from "react";
 import { Vector2, Vector3 } from "three";
-import Casing from "./Casing";
-import useMouseButtonHeldHandler from "./gunHooks/useMouseButtonHeldHandler";
+import Casing from "../Casing";
+import useMouseButtonHeldHandler from "../../hooks/gunHooks/useMouseButtonHeldHandler";
 import ReloadCursor from "./ReloadCursor";
 import ReloadObject from "./ReloadObject";
+import GunContext from "../gun/GunContext";
+import { Directions, ReloadMethodTypes } from "../../enums/reloadEnums";
 
 // TODO: maybe should create context for casings?
 const casingPosition = new Vector3();
 const casingVelocity = new Vector3(0, 0, 0);
-const casingAngularVelocity  = new Vector3(0, 6, 3);
-
-const ReloadMethodTypes = Object.freeze({
-  MOUSE_MOTION: 0,
-  GRABBER: 1,
-});
-
-const Directions = Object.freeze({
-  UP: 0,
-  DOWN: 1,
-  LEFT: 2,
-  RIGHT: 3,
-});
-
-const MARTINI_HENRY_RELOAD = [
-  {
-    type: ReloadMethodTypes.MOUSE_MOTION,
-    sensitivity: 2,
-    length: 0.5,
-    refreshMagazine: false,
-    direction: Directions.UP,
-    ejectCartridge: true,
-    bones: [
-      {
-        name: "lever",
-        property: "rotation",
-        axis: "y",
-        starting: -1.1980975954537447,
-        target: -0.5,
-      },
-      {
-        name: "breachblock",
-        property: "rotation",
-        axis: "y",
-        starting: 1.5707963267948966,
-        target: 1.30,
-      },
-    ]
-  },
-  {
-    type: ReloadMethodTypes.GRABBER,
-    sensitivity: 1,
-    refreshMagazine: false,
-    rotationOverride: "reload",
-    positionOverride: "reload",
-    insertionObjectId: "breachblock"
-  },
-  {
-    type: ReloadMethodTypes.MOUSE_MOTION,
-    sensitivity: 2,
-    length: 0.5,
-    refreshMagazine: true,
-    direction: Directions.DOWN,
-    bones: [
-      {
-        name: "lever",
-        property: "rotation",
-        axis: "y",
-        starting: -0.5,
-        target:  -1.1980975954537447,
-      },
-      {
-        name: "breachblock",
-        property: "rotation",
-        axis: "y",
-        starting: 1.30,
-        target: 1.5707963267948966,
-      },
-    ]    
-  },
-];
+const casingAngularVelocity  = new Vector3(-1, 2, 1);
 
 const grabRayOrigin = new Vector2();
 
 // TODO: this component is way too large -> can we break this down into more custom hooks?
 export default function ReloadController(props) {
-  const reloadSchema = useRef(MARTINI_HENRY_RELOAD);
+  const gun = use(GunContext);
+  const reloadSchema = useRef(gun.schema.reloadSchema);
   const [reloadStage, setReloadStage] = useState(0);
   const [reloadProgress, setReloadProgress] = useState(0); // 0..1
   const reloadComplete = useRef(false);
@@ -117,16 +50,20 @@ export default function ReloadController(props) {
 
   const handleEjection = () => {
     props.magazineCount.current = 0;
-    
-    casingPosition.setFromMatrixPosition(props.modelNodesRef.current["breachblock"].matrixWorld); 
-    casingVelocity.setX(0).setY(0).setZ(1).unproject(camera).normalize().multiplyScalar(4.5);
-    casingVelocity.setZ(-casingVelocity.z);
+    const spawner = gun.nodes[gun.schema.casing.spawner];
+    const gunForward = gun.modelLocal.current.getWorldDirection(new Vector3());
+    const gunRotation = gun.model.current.quaternion;
+
+    casingPosition.setFromMatrixPosition(spawner.matrixWorld); 
+    const up = new Vector3(0, 1, 0).applyQuaternion(gun.modelLocal.current.quaternion);
+    casingVelocity.copy(gunForward).normalize().multiplyScalar(1.2).add(up.multiplyScalar(0.98));
 
     const newCasing = {
       id: crypto.randomUUID(),
       position: casingPosition.add(new Vector3(0, 0.008, 0)),
       velocity: casingVelocity,
-      angVelocity: casingAngularVelocity
+      angVelocity: casingAngularVelocity,
+      rotation: gunRotation,
     };
     setCasings(prev => ([...prev, newCasing]));
   }
@@ -238,7 +175,7 @@ export default function ReloadController(props) {
               step = target;
             }
             
-            props.modelNodesRef.current[name][property][axis] = step;
+            gun.nodes[name][property][axis] = step;
           }
         }
       }
@@ -275,7 +212,6 @@ export default function ReloadController(props) {
         x={cursorX} y={cursorY} 
         grabbed={reloadObjectGrabbed} 
         visible={currStageTypeOf(ReloadMethodTypes.GRABBER) && props.isReloading}
-        modelNodesRef={props.modelNodesRef}
         insertionObjectId={reloadSchema.current[reloadStage].insertionObjectId ?? null}
         setReloadProgress={setReloadProgressHandler}
         tryFinishReload={tryFinishReload}
@@ -283,10 +219,8 @@ export default function ReloadController(props) {
 
       {casings.map(casing => 
         <Casing
-          key={casing.id} id={casing.id}
-          position={casing.position}
-          velocity={casing.velocity}
-          angVelocity={casing.angVelocity} 
+          key={casing.id} 
+          {...casing}
         />
       )}
 

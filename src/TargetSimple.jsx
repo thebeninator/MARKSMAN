@@ -1,5 +1,5 @@
 import { Edges, Sparkles, SpotLight } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
+import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useState } from "react";
 import { Object3D } from "three";
 
@@ -9,19 +9,19 @@ export default function TargetSimple(props) {
   const [target] = useState(() => new Object3D())
 
   return (
-    <RigidBody 
-      position={props.position} 
-      rotation={[0, Math.PI/4, 0]} 
-      name="target" 
-      colliders="cuboid" 
-      type="fixed"
-    >
-      <mesh castShadow>
-        <boxGeometry args={[1.7, 1.7, 1.7]} />
-        <meshBasicMaterial color="white" /> 
-        <Edges color="black" linewidth={2} renderOrder={1}/>
-      </mesh>
-      
+    <group position={props.position}>
+      <RigidBody 
+        rotation={[0, Math.PI/4, 0]} 
+        name="target" 
+        type="fixed"
+      >
+        <mesh castShadow>
+          <boxGeometry args={[1.7, 1.7, 1.7]} />
+          <meshBasicMaterial color="white" /> 
+          <Edges color="black" linewidth={2} renderOrder={1}/>
+        </mesh>
+      </RigidBody>
+
       <Sparkles position={[0, 2.5, 0]} color="white" count={10} scale={5} size={30} speed={2} />
 
       <SpotLight
@@ -38,6 +38,6 @@ export default function TargetSimple(props) {
         decay={0}
       />
       <primitive object={target} position={[0, -1, 0]} />
-    </RigidBody>
+    </group>
   );
 }
