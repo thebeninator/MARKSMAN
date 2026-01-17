@@ -15,7 +15,7 @@ export default function GunController(props) {
   const [bullets, setBullets] = useState([]);
   const [isReloading, setReloading] = useState(false);
   const pointerLocked = useRef(false);
-  const magazineCount = useRef(gun.schema.data.magazineSize);  
+  const magazineCount = useRef(0);  
   const { camera } = useThree();
   const { isAiming } = useAdsController(pointerLocked, isReloading);
   const reloadOverrides = useRef({rotation: null, position: null});
@@ -49,6 +49,10 @@ export default function GunController(props) {
   
   useFrame((state, delta) => {
     const targetZoom = isAiming ? props.aimZoom : props.defaultZoom;
+
+    if (isReloading) {
+      state.camera.lookAt(gun.modelLocal.current.position);
+    }
 
     if (state.camera.zoom !== targetZoom) {
       easing.damp(state.camera, "zoom", targetZoom, 0.25, delta);
@@ -85,7 +89,6 @@ export default function GunController(props) {
 
   return (
     <Fragment>
-      {justShot && <Sound />} 
       <ReloadController
         ui={props.ui}
         magazineCount={magazineCount} 

@@ -16,8 +16,10 @@ export default function useModelController(props) {
   }, [props.justShot]);
 
   useFrame((state, delta) => {
+    // TODO: lock while reloading
     const desiredRotQ = state.camera.quaternion.clone();
     easing.dampQ(gun.model.current.quaternion, desiredRotQ, 0.25, delta, 1, easing.exp, 0.0001);
+    
     gun.model.current.position.copy(state.camera.position);
 
     const desiredPos = props.reloadOverrides.current.position === null || !props.isReloading ? 

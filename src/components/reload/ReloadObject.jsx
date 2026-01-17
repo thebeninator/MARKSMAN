@@ -55,7 +55,7 @@ export default function ReloadObject(props) {
       state.camera.getWorldDirection(planeNormal).negate(); // parallel to the camera
 
       plane.normal = planeNormal;
-      plane.constant = -depth.z / (1.0 / 0.1); // honestly, this doesnt seem like a complete solution, but it works
+      plane.constant = -depth.z / 10.0; // honestly, this doesnt seem like a complete solution, but it works
 
       const x = (props.x / window.innerWidth) * 2 - 1;
       const y = ((props.y / window.innerHeight) * 2 - 1) * -1;

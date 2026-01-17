@@ -22,17 +22,17 @@ export default function App(props) {
   return (
     <Canvas
       shadows={ {type: BasicShadowMap} } 
-      camera={ {fov: 65, far: 5000, near: 0.08, isPerspectiveCamera: true, position:[0, 0, 0], rotation: [0, 0, 0], layers: layers} } 
+      camera={ {fov: 65, far: 3000, near: 0.08, isPerspectiveCamera: true, position:[0, 0, 0], rotation: [0, 0, 0], layers: layers} } 
       gl={ {toneMapping: NoToneMapping, antialias: false, powerPreference:"high-performance"} } 
     >
-      <fog attach="fog" args={["rgba(16, 15, 51, 1)", 0, 3000]} />
+      {/* <fog attach="fog" args={["rgba(4, 4, 20, 1)", 0, 3000]} /> */}
       <Fireflies position={[0, 1.7, 0]}/> 
       <ambientLight intensity={0.01} />
       <spotLight position={[0, 3, 0]} intensity={3} decay={0.5} castShadow />
       <Suspense>
         <Physics debug={debug} timeStep="vary">
           <TargetSimple position={[0, -1.7 / 2, -200]} />
-          <Floor />
+          {/*<Floor />*/}
           <Gun schema={MartiniHenrySchema}>
             <GunController 
               defaultZoom={1} 
@@ -42,7 +42,7 @@ export default function App(props) {
           </Gun>
         </Physics>
       </Suspense>
-      <Stars radius={500} depth={2000} count={1000} factor={60} saturation={1} fade speed={0.6} />
+      {/* <Stars radius={500} depth={2000} count={1000} factor={60} saturation={1} fade speed={0.6} /> */}
       {debug && <Stats />}
     </Canvas>
   );

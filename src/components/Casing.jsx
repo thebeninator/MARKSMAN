@@ -3,8 +3,6 @@ import { interactionGroups, RigidBody } from "@react-three/rapier";
 import { memo, useContext } from "react";
 import GunContext from "./gun/GunContext";
 
-// need to memoize otherwise ALL casings get re-rendered
-// and we end up with funky rapier behaviour 
 const Casing = memo(function Casing(props) {
   // TODO: use useObjectExpiry
   const gun = useContext(GunContext);
